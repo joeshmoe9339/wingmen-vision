@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { getSupa } from '../lib/supabase';
 import { Shield, AlertTriangle, Database, RefreshCw, Globe, FileSearch, Lock, Activity, Eye, Users, Scale, Radio, CheckCircle2, Server, Radar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -50,9 +50,15 @@ const OsintShield: React.FC = () => {
   // 1. Fetch data on component load
   useEffect(() => {
     const fetchData = async () => {
+      // Bail out gracefully when Supabase is not configured (offline mode)
+      if (!getSupa()) {
+        setFeeds(MOCK_FEEDS);
+        setLoading(false);
+        return;
+      }
       try {
-        const { data: feedsData, error: feedsError } = await supabase.from('feeds').select('*');
-        const { data: matchesData, error: matchesError } = await supabase.from('matches').select('*').order('detected_at', { ascending: false });
+        const { data: feedsData, error: feedsError } = await getSupa()!.from('feeds').select('*');
+        const { data: matchesData, error: matchesError } = await getSupa()!.from('matches').select('*').order('detected_at', { ascending: false });
 
         if (feedsData && !feedsError && feedsData.length > 0) {
           setFeeds(feedsData);
@@ -77,25 +83,27 @@ const OsintShield: React.FC = () => {
     fetchData();
 
     // 2. Enable Live Real-Time Subscriptions for Watchlist Hits
-    const matchSubscription = supabase
-      .channel('live-matches-channel')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'matches' },
-        (payload) => {
-          const newMatch = payload.new as Match;
-          setMatches((prevMatches) => [newMatch, ...prevMatches].slice(0, 50));
-        }
-      )
-      .subscribe();
+    let matchSubscription: any = null;
+    let statsInterval: any = null;
+    if (getSupa()) {
+      matchSubscription = getSupa()!.channel('live-matches-channel')
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'matches' },
+          (payload: { new: Match }) => {
+            const newMatch = payload.new as Match;
+            setMatches((prevMatches) => [newMatch, ...prevMatches].slice(0, 50));
+          },
+        )
+        .subscribe();
 
-    // 3. Local counter ticking animation for active camera scans
-    const statsInterval = setInterval(() => {
-      setStats((prev) => ({
-        records: prev.records + Math.floor(Math.random() * 3),
-        scans: prev.scans + Math.floor(Math.random() * 2 + 1),
-      }));
-    }, 2500);
+      statsInterval = setInterval(() => {
+        setStats((prev) => ({
+          records: prev.records + Math.floor(Math.random() * 3),
+          scans: prev.scans + Math.floor(Math.random() * 2 + 1),
+        }));
+      }, 2500);
+    }
     
     // Simulate real-time matches if DB is empty/mocked
     const mockMatchInterval = setInterval(() => {
@@ -119,7 +127,7 @@ const OsintShield: React.FC = () => {
     }, 8000);
 
     return () => {
-      supabase.removeChannel(matchSubscription);
+      if (matchSubscription) getSupa()?.removeChannel(matchSubscription);
       clearInterval(statsInterval);
       clearInterval(mockMatchInterval);
     };

@@ -1,0 +1,17 @@
+[Unit]
+Description=Wingmen Vision Web Server
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+ExecStart=/usr/bin/nodejs /home/bgdaddy/wingmenvision/backend/web_server.ts
+WorkingDirectory=/home/bgdaddy/wingmenvision/backend
+Restart=always
+
+Environment=PORT=8080
+Environment=BACKEND_URL=http://localhost:8081
+Environment=NODE_OPTIONS=--experimental-strip-types
+
+[Install]
+WantedBy=multi-user.target

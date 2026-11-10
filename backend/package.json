@@ -1,0 +1,20 @@
+{
+  "name": "wingmen-vision-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Wingmen Vision backend API + event pipeline (Node.js, ESM)",
+  "main": "server.js",
+  "scripts": {
+    "dev": "node --experimental-strip-types server.ts",
+    "start": "node server.js",
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.108.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "~5.9.3"
+  }
+}
